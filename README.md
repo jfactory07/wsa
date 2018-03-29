@@ -26,3 +26,5 @@ cmake .. -DCMAKE_C_FLAGS=-m32
 make
 make install
 ```
+
+
