@@ -44,7 +44,7 @@ set(SOURCES src/wsa_wayland.c)
 add_library(amdgpu_wsa_wayland SHARED ${SOURCES})
 
 target_include_directories ( amdgpu_wsa_wayland PUBLIC ${WAYLAND_INCLUDE_DIRS} )
-target_link_libraries ( amdgpu_wsa_wayland PUBLIC ${WAYLAND_CLIENT_LDFLAGS} )
+target_link_libraries ( amdgpu_wsa_wayland PUBLIC ${WAYLAND_LDFLAGS} )
 
 install(TARGETS amdgpu_wsa_wayland DESTINATION ${CMAKE_INSTALL_LIBDIR})
 
