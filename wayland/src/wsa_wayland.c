@@ -434,9 +434,9 @@ static WsaError WaylandWaitForLastImagePresented(
 
     int32 ret = 0;
 
-// functions like wl_display_dispatch_queue should be thread safe, otherwise, the event from server might be obtained by other
-// thread(like PAL does), and it will cause the current thead stuck in the poll, so here, we need to ensure when this function 
-// is called, no other thread can get the events.
+// functions like wl_display_dispatch_queue are not safe to be called in different threads at the same time,
+// the event from server might be obtained by other thread(like PAL does), and it will cause the current thead
+// stuck in the poll, so here, we need to ensure when this function is called, no other thread can get the events.
     pthread_mutex_lock(&s_mutex);
     while(!s_instanceList[hWsa].frameCompleted)
     {
