@@ -279,6 +279,8 @@ static WsaError InitializeWaylandWsa(
         wl_registry_destroy(registry);
     }
 
+    s_instanceList[hWsa].frameCompleted= true;
+
     pthread_mutex_unlock(&s_mutex);
 
     return ret;
@@ -384,7 +386,11 @@ static void WaylandDestroyImage(
     WSA_ASSERT((hImage >= 0) && (hImage < MAX_SURFACE_NUMBER));
 
     pthread_mutex_lock(&s_mutex);
-    s_surfaceList[hImage].pSurface = NULL;
+    if (s_surfaceList[hImage].pSurface)
+    {
+        wl_buffer_destroy(s_surfaceList[hImage].pSurface);
+        s_surfaceList[hImage].pSurface = NULL;
+    }
     pthread_mutex_unlock(&s_mutex);
 }
 
@@ -428,14 +434,21 @@ static WsaError WaylandWaitForLastImagePresented(
 
     int32 ret = 0;
 
+// functions like wl_display_dispatch_queue should be thread safe, otherwise, the event from server might be obtained by other
+// thread(like PAL does), and it will cause the current thead stuck in the poll, so here, we need to ensure when this function 
+// is called, no other thread can get the events.
+    pthread_mutex_lock(&s_mutex);
     while(!s_instanceList[hWsa].frameCompleted)
     {
         ret = wl_display_dispatch_queue(s_instanceList[hWsa].pDisplay, s_instanceList[hWsa].pQueue);
         if (ret < 0)
         {
+            pthread_mutex_unlock(&s_mutex);
             return UnknownFailure;
         }
     }
+    pthread_mutex_unlock(&s_mutex);
+
     return Success;
 }
 
@@ -447,10 +460,18 @@ static WsaError WaylandImageAvailable(
     WSA_ASSERT((hWsa >= 0) && (hWsa < MAX_INSTANCE_NUMBER) && s_instanceList[hWsa].initialized);
     WSA_ASSERT((hImage >= 0) && (hImage < MAX_SURFACE_NUMBER));
 
+    if (s_surfaceList[hImage].busy == false)
+    {
+        return Success;
+    }
+
+// the same reason as in WaylandWaitForLastImagePresented for why we need to lock here.
+    pthread_mutex_lock(&s_mutex);
     // firstly handle pending events in the queue.
     int ret = wl_display_dispatch_queue_pending(s_instanceList[hWsa].pDisplay, s_instanceList[hWsa].pQueue);
     if (ret < 0)
     {
+        pthread_mutex_unlock(&s_mutex);
         return UnknownFailure;
     }
 
@@ -458,17 +479,22 @@ static WsaError WaylandImageAvailable(
     ret = wl_display_roundtrip_queue(s_instanceList[hWsa].pDisplay, s_instanceList[hWsa].pQueue);
     if (ret < 0)
     {
+        pthread_mutex_unlock(&s_mutex);
         return UnknownFailure;
     }
     ret = wl_display_dispatch_queue_pending(s_instanceList[hWsa].pDisplay, s_instanceList[hWsa].pQueue);
     if (ret < 0)
     {
+        pthread_mutex_unlock(&s_mutex);
         return UnknownFailure;
     }
     if (s_surfaceList[hImage].busy == false)
     {
+        pthread_mutex_unlock(&s_mutex);
         return Success;
     }
+    pthread_mutex_unlock(&s_mutex);
+
     return ResourceBusy;
 }
 

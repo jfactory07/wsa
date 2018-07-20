@@ -41,10 +41,10 @@
 
 #define WSA_INTERFACE_VER 1
 
-#ifdef DEBUG
-    #define WSA_ASSERT(str) assert(str)
-#else
+#ifdef NDEBUG
     #define WSA_ASSERT(str)
+#else
+    #define WSA_ASSERT(str) assert(str)
 #endif
 
 typedef unsigned int           uint32;
