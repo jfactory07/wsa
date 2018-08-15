@@ -376,6 +376,7 @@ static WsaError WaylandCreateImage(
         }
     }
     pthread_mutex_unlock(&s_mutex);
+    close(fd);
     return NotEnoughResource;
 }
 
